@@ -12,130 +12,144 @@ public class UserDaoJDBCImpl implements UserDao {
 
     }
 
+
     Connection connection = Util.getConnection();
 
+    @Override
     public void createUsersTable() {
-        String query = "CREATE TABLE IF NOT EXISTS users " +
-                "(id INT NOT NULL AUTO_INCREMENT,  name VARCHAR(100), lastName VARCHAR(100), age INT, PRIMARY KEY (id))";
-        try (
-                Statement statement = connection.createStatement()
-        ) {
+
+        try (Statement statement = connection.createStatement()) {
+            connection.setAutoCommit(false);
+            String query = "CREATE TABLE IF NOT EXISTS users " +
+                    "(id INT NOT NULL AUTO_INCREMENT,  name VARCHAR(100), lastName VARCHAR(100), age INT, PRIMARY KEY (id))";
+
             statement.executeUpdate(query);
+            connection.commit();
         } catch (SQLException e) {
-
-
-//            System.out.println("проблема с созданием коннекта");
-            e.printStackTrace();
             try {
                 connection.rollback();
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
+            e.printStackTrace();
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
-
-
     }
 
+    @Override
     public void dropUsersTable() {
         String query = "DROP TABLE IF EXISTS users";
-        try (
-                Statement statement = connection.createStatement()) {
+        try {
+            connection.setAutoCommit(false);
+            Statement statement = connection.createStatement();
             statement.executeUpdate(query);
-
+            connection.commit();
         } catch (SQLException e) {
             e.printStackTrace();
+        } finally {
             try {
-                connection.rollback();
-            } catch (SQLException ex) {
-                ex.printStackTrace();
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
 
 
     }
 
-    //    public void saveUser(String name, String lastName, byte age) {
-//        String query = "INSERT INTO users (name, lastName, age) VALUES (?, ?, ?)";
-//        try (Connection connection = Util.getConnection();
-//             PreparedStatement preparedStatement = connection.prepareStatement(query)
-//        ) {
-//            preparedStatement.setString(1, name);
-//            preparedStatement.setString(2, lastName);
-//            preparedStatement.setByte(3, age);
-//            preparedStatement.executeUpdate();
-//            System.out.println("User с именем – " + name + " добавлен в базу данных");
-//
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//        }
-//
-//    }
+    @Override
     public void saveUser(String name, String lastName, byte age) {
-        try (PreparedStatement prepareStatement = connection.prepareStatement("INSERT users(name,lastname,age) values (?,?,?)");) {
-            prepareStatement.setString(1, name);
-            prepareStatement.setString(2, lastName);
-            prepareStatement.setByte(3, age);
-            prepareStatement.executeUpdate();
-            System.out.println("User с именем – " + name + " добавлен в базу данных");
+        String query = "INSERT INTO users(name, lastname, age) value (?, ?, ?)";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+            connection.setAutoCommit(false);
+            preparedStatement.setString(1, name);
+            preparedStatement.setString(2, lastName);
+            preparedStatement.setInt(3, age);
+            preparedStatement.executeUpdate();
+            connection.commit();
+            System.out.println("User с именем " + name + " добавлен в базу данных");
+
         } catch (SQLException e) {
-            e.printStackTrace();
             try {
                 connection.rollback();
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
+            e.printStackTrace();
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 
+    @Override
     public void removeUserById(long id) {
-        String query = "DELETE FROM users WHERE id = ?";
-        try (
-                PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+        String query = "delete from users where id = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+            connection.setAutoCommit(false);
             preparedStatement.setLong(1, id);
             preparedStatement.executeUpdate();
+            connection.commit();
         } catch (SQLException e) {
-            e.printStackTrace();
             try {
                 connection.rollback();
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
+            e.printStackTrace();
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
 
     }
 
+    @Override
     public List<User> getAllUsers() {
-        List<User> userList = new ArrayList<>();
-        String query = "SELECT id, name, lastName, age FROM users";
-        try (
-                Statement statement = connection.createStatement()) {
+        List<User> allUsers = new ArrayList<>();
+        try (Statement statement = connection.createStatement()) {
+            connection.setAutoCommit(false);
+            String query = "SELECT * FROM users";
             ResultSet resultSet = statement.executeQuery(query);
             while (resultSet.next()) {
-                long id = resultSet.getLong("id");
-                String name = resultSet.getString("name");
-                String lastName = resultSet.getString("lastName");
-                byte age = resultSet.getByte("age");
-                User user = new User(name, lastName, age);
-                user.setId(id);
-                userList.add(user);
+                User user = new User();
+                user.setId(resultSet.getLong("id"));
+                user.setName(resultSet.getString("name"));
+                user.setLastName(resultSet.getString("lastName"));
+                user.setAge(resultSet.getByte("age"));
+                allUsers.add(user);
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
+        }finally {
             try {
-                connection.rollback();
-            } catch (SQLException ex) {
-                ex.printStackTrace();
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
 
-        return userList;
+        return allUsers;
     }
 
+    @Override
     public void cleanUsersTable() {
         String query = "DELETE FROM users";
-        try (
-                Statement statement = connection.createStatement()) {
+        try (Statement statement = connection.createStatement()) {
+            connection.setAutoCommit(false);
             statement.executeUpdate(query);
+            connection.commit();
         } catch (SQLException e) {
             try {
                 connection.rollback();
@@ -143,7 +157,13 @@ public class UserDaoJDBCImpl implements UserDao {
                 ex.printStackTrace();
             }
             e.printStackTrace();
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
-
     }
+
 }
